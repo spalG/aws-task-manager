@@ -27,7 +27,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})  # tighten in production
 
 # ── DB Config ─────────────────────────────────────────────
 DB_CONFIG = {
-    "host":     os.getenv("DB_HOST", "localhost"),
+    "host":     os.getenv("DB_HOST", "<rds-endpoint>"),
     "port":     int(os.getenv("DB_PORT", 3306)),
     "user":     os.getenv("DB_USER", "admin"),
     "password": os.getenv("DB_PASSWORD", ""),
