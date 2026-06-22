@@ -1,0 +1,95 @@
+##FrontEnd EC2
+sudo dnf install nginx -y
+
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+sudo vi /usr/share/nginx/html/index.html
+#paste the index.html
+
+sudo vi /etc/nginx/conf.d/default.conf
+
+server {
+    listen 80;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://<internal-alb>;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+sudo nginx -t
+
+sudo systemctl restart nginx
+
+##Backend EC2
+sudo dnf update -y
+
+sudo dnf install -y \
+python3.11 \
+python3.11-pip \
+python3.11-devel \
+gcc
+
+sudo mkdir -p /opt/taskflow
+
+sudo chown -R ec2-user:ec2-user /opt/taskflow
+
+cd /opt/taskflow
+sudo vi app.py
+sudo vi requirements.txt
+sudo vi gunicorn.conf.py
+
+
+sudo vi python3.11 -m venv venv
+
+. venv/bin/activate
+
+sudo python3.11 -m pip install -r requirements.txt
+
+nano /opt/taskflow/.env
+
+FLASK_ENV=production
+
+PORT=5000
+
+DB_HOST=your-rds-endpoint.amazonaws.com
+DB_PORT=3306
+
+DB_USER=admin
+DB_PASSWORD=yourpassword
+
+DB_NAME=taskflow
+
+DB_SSL_DISABLED=false
+
+sudo dnf install mariadb105 -y
+
+mysql \
+-h YOUR_RDS_ENDPOINT \
+-u admin \
+-p
+
+CREATE DATABASE IF NOT EXISTS taskflow;
+
+exit
+
+python3.11 app.py
+
+#if want to leave continuous runing use gunicorn
+#. venv/bin/activate
+#gunicorn --config gunicorn.conf.py app:app
+
+external-alb (80) to frontend ec2 -> target group -> /
+internal-alb (5000) to backend ec2 -> target group -> /health
