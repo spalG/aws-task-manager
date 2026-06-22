@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow — Project Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design Tokens ── */
+    :root {
+      --bg:         #0d0f14;
+      --surface:    #151820;
+      --surface2:   #1c2030;
+      --border:     #252a3a;
+      --accent:     #4f6ef7;
+      --accent-glow:#4f6ef740;
+      --green:      #22c55e;
+      --yellow:     #eab308;
+      --red:        #ef4444;
+      --text:       #e2e8f0;
+      --muted:      #64748b;
+      --font:       'Inter', sans-serif;
+      --mono:       'JetBrains Mono', monospace;
+      --radius:     10px;
+      --shadow:     0 4px 24px #0008;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Nav ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+    .nav-meta { font-size:.8rem; color:var(--muted); font-family:var(--mono); }
+
+    /* ── Layout ── */
+    .container { max-width:1200px; margin:0 auto; padding:32px 24px; flex:1; }
+
+    /* ── Stats Row ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+    .stat-value { font-size:2rem; font-weight:700; font-family:var(--mono); }
+    .stat-value.blue { color:var(--accent); }
+    .stat-value.green { color:var(--green); }
+    .stat-value.yellow { color:var(--yellow); }
+    .stat-value.red { color:var(--red); }
+
+    /* ── Main Grid ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-size:.9rem; font-weight:600; }
+    .panel-body { padding: 24px; }
+
+    /* ── Filter Tabs ── */
+    .tabs { display:flex; gap:4px; background:var(--bg); padding:4px; border-radius:8px; }
+    .tab {
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: .8rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .tab.active { background:var(--accent); color:#fff; }
+    .tab:hover:not(.active) { color:var(--text); background:var(--border); }
+
+    /* ── Task List ── */
+    .task-list { display:flex; flex-direction:column; gap:10px; }
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: border-color .15s, box-shadow .15s;
+      cursor: pointer;
+    }
+    .task-item:hover { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-glow); }
+    .task-check {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .task-check.done { background:var(--green); border-color:var(--green); }
+    .task-check.done::after { content:'✓'; color:#fff; font-size:11px; font-weight:700; }
+    .task-content { flex:1; min-width:0; }
+    .task-title { font-size:.9rem; font-weight:500; margin-bottom:4px; }
+    .task-title.done { text-decoration:line-through; color:var(--muted); }
+    .task-meta { display:flex; gap:10px; align-items:center; font-size:.75rem; color:var(--muted); flex-wrap:wrap; }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: .68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .badge-high { background:#ef444420; color:var(--red); }
+    .badge-medium { background:#eab30820; color:var(--yellow); }
+    .badge-low { background:#22c55e20; color:var(--green); }
+    .badge-todo { background:#4f6ef720; color:var(--accent); }
+    .badge-in_progress { background:#a855f720; color:#a855f7; }
+    .badge-done { background:#22c55e20; color:var(--green); }
+    .task-actions { display:flex; gap:6px; flex-shrink:0; }
+    .icon-btn {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border: none; border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .85rem;
+      transition: all .15s;
+    }
+    .icon-btn:hover { background:var(--border); color:var(--text); }
+    .icon-btn.del:hover { background:#ef444420; color:var(--red); }
+
+    /* ── Form Panel ── */
+    .form-group { margin-bottom:16px; }
+    label { display:block; font-size:.78rem; font-weight:500; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.06em; }
+    input[type=text], input[type=date], select, textarea {
+      width:100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: .88rem;
+      transition: border-color .15s;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+    select option { background:var(--surface2); }
+    textarea { resize:vertical; min-height:72px; }
+    .btn {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--font);
+      font-size: .88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-primary:hover { background:#3a57d4; box-shadow:0 4px 16px var(--accent-glow); }
+    .btn-primary:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 500;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all .25s;
+      z-index: 999;
+    }
+    #toast.show { transform:translateY(0); opacity:1; }
+    #toast.success { border-color:var(--green); color:var(--green); }
+    #toast.error { border-color:var(--red); color:var(--red); }
+
+    /* ── Loading ── */
+    .loading { text-align:center; padding:40px; color:var(--muted); font-size:.85rem; }
+    .spinner { display:inline-block; width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .6s linear infinite; margin-bottom:8px; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* ── Edit Modal ── */
+    .modal-overlay {
+      position:fixed; inset:0;
+      background:#0009;
+      display:flex; align-items:center; justify-content:center;
+      z-index:200;
+      opacity:0; pointer-events:none;
+      transition:opacity .2s;
+    }
+    .modal-overlay.open { opacity:1; pointer-events:all; }
+    .modal {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:28px;
+      width:100%;
+      max-width:480px;
+      box-shadow:var(--shadow);
+      transform:scale(.96);
+      transition:transform .2s;
+    }
+    .modal-overlay.open .modal { transform:scale(1); }
+    .modal-title { font-size:1rem; font-weight:600; margin-bottom:20px; }
+    .modal-footer { display:flex; gap:10px; margin-top:8px; }
+    .btn-secondary { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:10px; font-size:.88rem; font-weight:500; cursor:pointer; }
+    .btn-secondary:hover { border-color:var(--accent); }
+    .btn-accent { flex:1; }
+
+    /* ── Responsive ── */
+    @media(max-width:900px) {
+      .stats { grid-template-columns:repeat(2,1fr); }
+      .main-grid { grid-template-columns:1fr; }
+    }
+    @media(max-width:500px) {
+      .stats { grid-template-columns:1fr 1fr; }
+      nav { padding:0 16px; }
+      .container { padding:20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    TaskFlow
+  </div>
+  <div class="nav-meta" id="nav-status">Connecting…</div>
+</nav>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Tasks</div>
+      <div class="stat-value blue" id="s-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">In Progress</div>
+      <div class="stat-value yellow" id="s-progress">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value green" id="s-done">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">High Priority</div>
+      <div class="stat-value red" id="s-high">—</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- Task List Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Tasks</span>
+        <div class="tabs">
+          <button class="tab active" onclick="filterTasks('all',this)">All</button>
+          <button class="tab" onclick="filterTasks('todo',this)">Todo</button>
+          <button class="tab" onclick="filterTasks('in_progress',this)">In Progress</button>
+          <button class="tab" onclick="filterTasks('done',this)">Done</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div id="task-list" class="task-list">
+          <div class="loading"><div class="spinner"></div><br>Loading tasks…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Task Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">New Task</span>
+      </div>
+      <div class="panel-body">
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" id="f-title" placeholder="What needs to be done?" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="f-desc" placeholder="Add details…"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="f-priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="todo" selected>Todo</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Due Date</label>
+          <input type="date" id="f-due" />
+        </div>
+        <div class="form-group">
+          <label>Assigned To</label>
+          <input type="text" id="f-assigned" placeholder="Team member name" />
+        </div>
+        <button class="btn btn-primary" id="add-btn" onclick="addTask()">＋ Add Task</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">Edit Task</div>
+    <input type="hidden" id="m-id" />
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="m-title" />
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="m-desc"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Priority</label>
+      <select id="m-priority">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="m-status">
+        <option value="todo">Todo</option>
+        <option value="in_progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Due Date</label>
+      <input type="date" id="m-due" />
+    </div>
+    <div class="form-group">
+      <label>Assigned To</label>
+      <input type="text" id="m-assigned" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="document.getElementById('modal-overlay').classList.remove('open')">Cancel</button>
+      <button class="btn btn-primary btn-accent" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── Config ──
+  // Change this to your Flask backend URL (EC2 IP or ALB DNS)
+  const API_BASE = window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : '/api';  // same-origin if served from Flask
+
+  let allTasks = [];
+  let currentFilter = 'all';
+
+  // ── Init ──
+  document.addEventListener('DOMContentLoaded', () => {
+    loadTasks();
+    // Set default due date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('f-due').value = tomorrow.toISOString().split('T')[0];
+  });
+
+  // ── API Helpers ──
+  async function api(path, method='GET', body=null) {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API_BASE + path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  // ── Load Tasks ──
+  async function loadTasks() {
+    try {
+      const data = await api('/tasks');
+      allTasks = data.tasks;
+      renderTasks();
+      updateStats();
+      document.getElementById('nav-status').textContent = `${allTasks.length} tasks · Connected`;
+    } catch (e) {
+      document.getElementById('task-list').innerHTML = `
+        <div class="loading" style="color:var(--red)">
+          ⚠ Cannot connect to backend<br>
+          <small style="color:var(--muted);margin-top:6px;display:block">${e.message}</small>
+        </div>`;
+      document.getElementById('nav-status').textContent = 'Offline';
+      showToast('Cannot reach API — is Flask running?', 'error');
+    }
+  }
+
+  // ── Render ──
+  function renderTasks() {
+    const list = document.getElementById('task-list');
+    let tasks = allTasks;
+    if (currentFilter !== 'all') tasks = tasks.filter(t => t.status === currentFilter);
+
+    if (!tasks.length) {
+      list.innerHTML = `<div class="loading" style="padding:24px">No tasks here yet.</div>`;
+      return;
+    }
+
+    list.innerHTML = tasks.map(t => `
+      <div class="task-item" id="task-${t.id}">
+        <div class="task-check ${t.status === 'done' ? 'done' : ''}"
+             onclick="toggleDone(${t.id}, '${t.status}')"></div>
+        <div class="task-content">
+          <div class="task-title ${t.status === 'done' ? 'done' : ''}">${escHtml(t.title)}</div>
+          <div class="task-meta">
+            <span class="badge badge-${t.priority}">${t.priority}</span>
+            <span class="badge badge-${t.status}">${t.status.replace('_',' ')}</span>
+            ${t.due_date ? `<span>📅 ${formatDate(t.due_date)}</span>` : ''}
+            ${t.assigned_to ? `<span>👤 ${escHtml(t.assigned_to)}</span>` : ''}
+          </div>
+          ${t.description ? `<div style="font-size:.78rem;color:var(--muted);margin-top:6px">${escHtml(t.description)}</div>` : ''}
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" title="Edit" onclick="openEdit(${t.id})">✏️</button>
+          <button class="icon-btn del" title="Delete" onclick="deleteTask(${t.id})">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateStats() {
+    document.getElementById('s-total').textContent = allTasks.length;
+    document.getElementById('s-progress').textContent = allTasks.filter(t => t.status === 'in_progress').length;
+    document.getElementById('s-done').textContent = allTasks.filter(t => t.status === 'done').length;
+    document.getElementById('s-high').textContent = allTasks.filter(t => t.priority === 'high').length;
+  }
+
+  // ── Filters ──
+  function filterTasks(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderTasks();
+  }
+
+  // ── Add Task ──
+  async function addTask() {
+    const title = document.getElementById('f-title').value.trim();
+    if (!title) { showToast('Title is required', 'error'); return; }
+
+    const btn = document.getElementById('add-btn');
+    btn.disabled = true; btn.textContent = 'Adding…';
+
+    try {
+      await api('/tasks', 'POST', {
+        title,
+        description: document.getElementById('f-desc').value.trim(),
+        priority: document.getElementById('f-priority').value,
+        status: document.getElementById('f-status').value,
+        due_date: document.getElementById('f-due').value || null,
+        assigned_to: document.getElementById('f-assigned').value.trim() || null,
+      });
+
+      // Reset form
+      ['f-title','f-desc','f-assigned'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('f-priority').value = 'medium';
+      document.getElementById('f-status').value = 'todo';
+
+      showToast('Task added!', 'success');
+      await loadTasks();
+    } catch(e) {
+      showToast(e.message, 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = '＋ Add Task';
+    }
+  }
+
+  // ── Toggle Done ──
+  async function toggleDone(id, currentStatus) {
+    const newStatus = currentStatus === 'done' ? 'todo' : 'done';
+    try {
+      await api(`/tasks/${id}`, 'PUT', { status: newStatus });
+      await loadTasks();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  // ── Delete ──
+  async function deleteTask(id) {
+    if (!confirm('Delete this task?')) return;
+    try {
+      await api(`/tasks/${id}`, 'DELETE');
+      showToast('Task deleted', 'success');
+      await loadTasks();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  // ── Edit Modal ──
+  function openEdit(id) {
+    const t = allTasks.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('m-id').value = t.id;
+    document.getElementById('m-title').value = t.title;
+    document.getElementById('m-desc').value = t.description || '';
+    document.getElementById('m-priority').value = t.priority;
+    document.getElementById('m-status').value = t.status;
+    document.getElementById('m-due').value = t.due_date ? t.due_date.split('T')[0] : '';
+    document.getElementById('m-assigned').value = t.assigned_to || '';
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal(e) {
+    if (e.target === document.getElementById('modal-overlay'))
+      document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  async function saveEdit() {
+    const id = document.getElementById('m-id').value;
+    const title = document.getElementById('m-title').value.trim();
+    if (!title) { showToast('Title required', 'error'); return; }
+
+    try {
+      await api(`/tasks/${id}`, 'PUT', {
+        title,
+        description: document.getElementById('m-desc').value.trim(),
+        priority: document.getElementById('m-priority').value,
+        status: document.getElementById('m-status').value,
+        due_date: document.getElementById('m-due').value || null,
+        assigned_to: document.getElementById('m-assigned').value.trim() || null,
+      });
+      document.getElementById('modal-overlay').classList.remove('open');
+      showToast('Task updated!', 'success');
+      await loadTasks();
+    } catch(e) { showToast(e.message, 'error'); }
+  }
+
+  // ── Utils ──
+  function showToast(msg, type='success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatDate(d) {
+    return new Date(d).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
+  }
+</script>
+</body>
+</html>
